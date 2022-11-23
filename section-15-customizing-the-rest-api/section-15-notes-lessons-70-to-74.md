@@ -78,8 +78,99 @@ In mu-plugins: wp-content/mu-plugins/university-post-types.php
 
 To make a custom route for a Custom Post Type, add a property within the Custom Post Type’s associative array in MU Plugins / university-post-types.php.
 
+[LESSON 40: REGISTER PROFESSOR Custom Post Type: (1st min)](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7484308#overview).
+
+[LESSON 71: ADD PROPERTY TO CPT FOR CUSTOM API ROUTE: (1:41)](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7837916#overview).
+
+Add ONE line: **'show_in_rest' => true,** 
+
+```
+<?php
+function university_post_types(){
+        register_post_type('professor', array(
+            'show_in_rest' => true,
+            'supports' => array('title', 'editor', 'thumbnail'),
+            'public' => true,
+            'show_in_rest' => true,
+            'labels' => array(
+                'name' => 'Professors',
+                'add_new_item' => 'Add New Professor',
+                'edit_item' => 'Edit Professor',
+                'all_items' => 'All Professor', 
+                'singular_name' => 'Professor'
+                ),
+            'menu_icon' => 'dashicons-welcome-learn-more'
+    ));
+
+}
+
+add_action('init', 'university_post_types');
+
+?>
+```
+
+Now we can receive JSON data for the last 10 (default) recently created professors: 
+**https://hackinwp.com/wp-json/wp/v2/professor** [View Professor API Route](https://hackinwp.com/wp-json/wp/v2/professor).
+
+
+We'll use CUSTOM REST API Routes to show related professors and programs which correspond to the post/page which our search retrieves. (2:46)
+
+This allows us to build out WP's default search logic which is not very advanced out of the box.
+Default WP only searches in obvious fields like TITLE and MAIN BODY field. 
+DOES NOT search within our Custom Fields
+
+**Four Main Reasons We Are Creating Our Own New REST API URL**
+* We need our own Custom Search Logic
+* Respond with WAY less JSON data (load faster for visitors)
+    - Default WP URLs return every field about a post, more than we need
+    - All WE really need in our search is a (1) Title, (2) Permalink and maybe (3) URL to thumbnail image
+    - Search loads faster, especially on slow mobile connection
+* Send only 1 getJSON reqeust instead of 6 in our JS
+    - Default WP POST URLs only return a single post type at a time (hence why we had to merge PAGES and POST previously)
+    - Our Custom URL can be configured to search 6 post types at once (or whatever # needed).
+* Good exercise to sharpen PHP skills.
+
+
+(7:34) - Create separate file and include / require in functions.php
+
+(7:45) - Create new 'includes' folder in our theme folder. File name not matter. (includes/search-route.php).
+
+In functions.php use: **get_theme_file_path()**
+```
+<?php
+
+require get_theme_file_path('/includes/search-route.php'); 
+
+```
+
+In search-route.php, key WP Functions we use are: 
+
+**register_rest_route()** (10:56)
+**WP_REST_SERVER::READABLE** (14:38) - WP constant that substitutes for a normal GET route
+    (Some webhosts may use a slightly different variable than GET, so safer to use the WP constant)
+
+Results up to Lesson 71: 
+search-route.php
+```
+<?php
+    add_action('rest_api_init', 'universityRegisterSearch');
+
+    function universityRegisterSearch(){
+        register_rest_route('university/v1', 'search', array(
+            'methods' => WP_REST_SERVER::READABLE,
+            'callback' => 'universitySearchResults'                
+        ));               
+    } 
+
+    function universitySearchResults(){
+        return 'Congrats, you created a route';
+    }           
+
 ```
 
 
+### Lesson 72: Create Your Own JSON Data
+### Return REAL JSON data to our Custom Route created in Lesson 71
 
-```
+
+[LESSON 72: Create Your Own JSON Data](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7909620#overview).
