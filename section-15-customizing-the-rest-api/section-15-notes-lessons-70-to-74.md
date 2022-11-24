@@ -246,7 +246,7 @@ Just return the title and permalink of the Custom Post type 'Professor' posts
 
 ```
 
-Returns:
+Returns all Professor Post Types:
 ```
 [
     {
@@ -272,3 +272,96 @@ We can now create a custom array which contains only the exact data we want from
 
 [LESSON 73: WP_Query and Keyword Searching](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7909626#overview).
 
+This lesson, we'll filter the Professor Custom Post Types in our WP_Query if they match the users' query. 
+
+In includes/search-route.php:
+``` 
+<?php   
+    $professors = new WP_Query(array(
+            'post_type' => 'professor',
+// L73 @ 1:32 Arguments we've used in the past - posts_per_page, meta_query, order_by
+// NEW ARGUMENT 's' which stands for search
+            's' => 'Barksalot'
+        )); 
+
+// RETURNS
+[
+    {
+        "title": "Dr. Barksalot",
+        "permalink": "https://hackinwp.com/professor/dr-barksalot/"
+    }
+]
+ ```  
+The new argument use used in our WP_Query array,(**'s' => 'Barksalot'**) does the trick of matching the search term to the appropriate Professor type if a match exists
+
+Here we are HARD CODING a search specifically for dummy Professor Post Type with the word 'Barksalot'
+**'s' => 'Barksalot'**
+
+Custom URL: **hackinwp.com/wp-json/university/v1/search?term=barksalot**
+```
+    function universitySearchResults($data){    // L73 @ 4:05 - Add $data parameter (name not matter), to catch the extra data WP sends about the callback this function receives
+                                                // $data is an array that WP puts together and within this array we can access any parameter someone adds on to our custom URL    
+            
+        $professors = new WP_Query(array(       // L72 @ 5:20 - create a new instance of the WP Query class
+                'post_type' => 'professor',
+                's' => 'Barksalot'                   // L73 @ 1:32 NEW Arg 's'; Arguments we've used in the past - posts_per_page, meta_query, order_by
+        )); 
+    
+        
+        $professorResults = array(); 
+          
+        while($professors->have_posts()){   // While our WP_Query object ($professors) has posts  
+            $professors->the_post();        // load the post object for each one? In lesson 72, 5:30 - 6th min
+                
+            array_push($professorResults, array(    // array_push($professorResults, 'hello');
+                'title' => get_the_title(),
+                'permalink' => get_the_permalink()
+            ));
+            
+            
+        }
+        
+        return $professorResults;
+       
+    } 
+
+
+// RETURNS
+
+[
+    {
+        "title": "Dr. Barksalot",
+        "permalink": "https://hackinwp.com/professor/dr-barksalot/"
+    }
+]
+
+```
+
+
+### sanitize_text_field()
+WordPress provides built in sql injection protection for searches on a site
+
+L73 @ 7th min - We have to sanitize the input from a user.
+SO, always wrap your input fields with WP function **sanitize_text_field()**
+
+```
+<?php
+
+    $professors = new WP_Query(array(
+        'post_type' => 'professor',
+        
+        //'s' => $data['term']
+        's' => sanitize_text_field($data['term'])
+    ));
+
+```
+
+
+### Lesson 74: Working With Multiple Post Types
+### Search Results From ALL post types
+
+We will now return data in our search from ALL post types, instead of only the Professor Custom Post Type.
+After that we'll go back to working on the display for our search overlay (via footer.php)
+We'll sort the results in 3 columns. (1) Posts/Pages, (2) Professors/Programs, (3) Campus/Events (Section 16)
+
+[LESSON 74: Working With Multiple Post Types](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7909630#overview).
