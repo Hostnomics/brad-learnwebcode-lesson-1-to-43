@@ -110,7 +110,7 @@ add_action('init', 'university_post_types');
 ```
 
 Now we can receive JSON data for the last 10 (default) recently created professors: 
-**https://hackinwp.com/wp-json/wp/v2/professor** [View Professor API Route](https://hackinwp.com/wp-json/wp/v2/professor).
+**https://hackinwp.com/wp-json/wp/v2/professor** 
 
 
 We'll use CUSTOM REST API Routes to show related professors and programs which correspond to the post/page which our search retrieves. (2:46)
@@ -146,6 +146,7 @@ require get_theme_file_path('/includes/search-route.php');
 In search-route.php, key WP Functions we use are: 
 
 **register_rest_route()** (10:56)
+
 **WP_REST_SERVER::READABLE** (14:38) - WP constant that substitutes for a normal GET route
     (Some webhosts may use a slightly different variable than GET, so safer to use the WP constant)
 
@@ -170,7 +171,104 @@ search-route.php
 
 
 ### Lesson 72: Create Your Own JSON Data
-### Return REAL JSON data to our Custom Route created in Lesson 71
+### Return REAL JSON data to our Custom Route created in Lesson 72
 
 
 [LESSON 72: Create Your Own JSON Data](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7909620#overview).
+
+WP automatically converts php data into JSON data
+
+```
+<?php
+    function universitySearchResults(){
+        return array('BTC', 'ETH', 'MATIC'); 
+    } 
+
+// RETURNS
+{
+    ["BTC","ETH","MATIC"]
+}   
+
+
+```
+
+(4:54) - create custom logic to return JSON we need 
+In includes/search-route.php
+```
+<?php
+    add_action('rest_api_init', 'universityRegisterSearch');
+
+    function universityRegisterSearch(){
+        register_rest_route('university/v1', 'search', array(
+            'methods' => WP_REST_SERVER::READABLE,
+            'callback' => 'universitySearchResults'                
+        ));               
+    } 
+
+    function universitySearchResults(){
+        $professors = new WP_Query(array(
+            'post_type' => 'professor'
+        )); 
+
+        return $professors->posts;
+    }  
+
+```
+
+Now we get the 10 last CUSTOM POST TYPES of 'professor' at our custom route: https://hackinwp.com/wp-json/university/v1/search
+
+
+Just return the title and permalink of the Custom Post type 'Professor' posts
+```
+<?php
+
+    function universitySearchResults() {
+        $professors = new WP_Query(array(
+            'post_type' => 'professor'
+        )); 
+
+        //set up empty array
+        $professorResults = array();
+
+        // While our WP_Query object ($professors) has posts        
+        while($professors->have_posts()){
+            $professors->the_post(); 
+                // array_push($professorResults, 'hello');
+            
+            array_push($professorResults, array(
+                'title' => get_the_title(),
+                'permalink' => get_the_permalink()
+            ));                       
+        }
+        
+        return $professorResults;
+    }
+
+```
+
+Returns:
+```
+[
+    {
+        "title": "Dr. Froggerson",
+        "permalink": "https://hackinwp.com/professor/dr-froggerson/"
+    },
+    {
+        "title": "Dr. Barksalot",
+        "permalink": "https://hackinwp.com/professor/dr-barksalot/"
+    },
+    {
+        "title": "Dr. Meowsalot",
+        "permalink": "https://hackinwp.com/professor/dr-meowsalot/"
+    }
+]
+```
+We can now create a custom array which contains only the exact data we want from an object, here a Custom Post Type.
+
+
+### Lesson 73: WP_Query and Keyword Searching
+### keyword searching within our Custom Post Type Results via our custom route
+
+
+[LESSON 73: WP_Query and Keyword Searching](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7909626#overview).
+
