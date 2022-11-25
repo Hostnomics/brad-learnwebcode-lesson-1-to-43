@@ -297,7 +297,7 @@ The new argument use used in our WP_Query array,(**'s' => 'Barksalot'**) does th
 Here we are HARD CODING a search specifically for dummy Professor Post Type with the word 'Barksalot'
 **'s' => 'Barksalot'**
 
-Custom URL: **hackinwp.com/wp-json/university/v1/search?term=barksalot**
+Custom URL: **https://hackinwp.com/wp-json/university/v1/search?term=barksalot**
 ```
     function universitySearchResults($data){    // L73 @ 4:05 - Add $data parameter (name not matter), to catch the extra data WP sends about the callback this function receives
                                                 // $data is an array that WP puts together and within this array we can access any parameter someone adds on to our custom URL    
@@ -365,3 +365,71 @@ After that we'll go back to working on the display for our search overlay (via f
 We'll sort the results in 3 columns. (1) Posts/Pages, (2) Professors/Programs, (3) Campus/Events (Section 16)
 
 [LESSON 74: Working With Multiple Post Types](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7909630#overview).
+
+
+Had to go back and create the Campus Custom Post Type, [LESSON 52: Campus Post Type](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7587956#overview).
+
+
+```
+<?php
+
+    function universitySearchResults($data){
+
+        $mainQuery = new WP_Query(array(
+            'post_type' => array('post', 'page', 'professor', 'program', 'event', 'campus'),
+            's' => sanitize_text_field($data['term'])
+        ));
+
+        $results = array(   
+            'generalInfo' => array(),   // blog post or page
+            'professors' => array(),    
+            'programs' => array(),
+            'events' => array(),
+            'campuses' => array()
+        );
+
+        while($mainQuery->have_posts()){
+            $mainQuery->the_post();
+
+            if(get_post_type() == 'professor'){    
+                array_push($results['professors'], array(         
+                    'title' => get_the_title(),
+                    'permalink' => get_the_permalink(),
+                    'type' => get_post_type()
+                ));
+            } 
+
+            if(get_post_type() == 'post'OR get_post_type() == 'page'){    
+                array_push($results['generalInfo'], array(         
+                    'title' => get_the_title(),
+                    'permalink' => get_the_permalink(),
+                    'type' => get_post_type()
+                ));
+            }        
+
+    // REPEAT IF conditionals for each custom post type we set up an array for.
+
+        }
+
+         return $results;
+    }  
+
+// POSTMAN GET Request emulating a search for 'barksalot' to: https://hackinwp.com/wp-json/university/v1/search?term=barksalot
+// RETURNS: 
+{
+    "generalInfo": [],
+    "professors": [
+        {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor"
+        }
+    ],
+    "programs": [],
+    "events": [],
+    "campuses": []
+}
+
+```
+
+In the section 16, we'll build a three column layout for our custom REST API built in this section. 
