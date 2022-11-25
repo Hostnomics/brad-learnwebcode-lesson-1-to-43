@@ -132,3 +132,116 @@ Final version of getResults() function at the end of Lesson 75:
 
 [Section 16 Lesson 76](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7956670#overview).
 
+
+To pass the thumbnail image to the Professor Post Type we'll use **get_the_post_thumbnail_url()** WP function. (6:55)
+
+It has two arguments
+*1 - Which post you want to get the thumbnail image for
+*2 - The size of the image to be displayed 
+**get_the_post_thumbnail_url(which post, image size)**
+
+0 tells WP that you want the current post. (7:05)
+**get_the_post_thumbnail_url(0, size)**
+
+We'll use this the size we created as 'professorLandscape' (maybe in Lesson 41 at (8:06))
+**get_the_post_thumbnail_url(0, 'professorLandscape')**
+
+So we added this to the Professor fields in our custom API URL in includes/search-route.php: 
+```
+<?php
+
+    if(get_post_type() == 'professor'){    
+        array_push($results['professors'], array(         
+            'title' => get_the_title(),
+            'permalink' => get_the_permalink(),
+            'type' => get_post_type(),
+            'image' => get_the_post_thumbnail_url(0, 'professorLandscape')
+        ));
+    }  
+
+// GET REQUEST IN POSTMAN TO: https://hackinwp.com/wp-json/university/v1/search?term=barksalot
+// RETURNS
+{
+    "generalInfo": [],
+    "professors": [
+        {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/barksalot-400x260.jpg"
+        }
+    ],
+    "programs": [],
+    "events": [],
+    "campuses": []
+}
+
+```
+
+(make sure your JS is getting compiled and bundled up - (8:33))
+
+## Lesson 75 @ 9th minute - Set up Event Custom Post Type Results
+
+(To edit Programs custom page, edit archive-program.php)
+
+We'll add the formatted Month and Day of the Event Custom Post Type to the our Event API route
+And we'll add the excerpt logic
+
+So in includes/search-route.php:
+```
+<?php
+
+    if(get_post_type() == 'event'){   
+        
+        $eventDate = new DateTime(get_field('event_date')); 
+        $formatted_month = $eventDate->format('M'); 
+        $formatted_day = $eventDate->format('d');
+
+        if(has_excerpt()){
+            $display_excerpt = get_the_excerpt();  
+        }else{
+            $display_excerpt = wp_trim_words(get_the_content(), 18);
+        }
+
+        array_push($results['events'], array(         
+            'title' => get_the_title(),
+            'permalink' => get_the_permalink(),
+            'type' => get_post_type(),
+            'month' => $formatted_month,
+            'day' => $formatted_day,
+            'excerpt' => $display_excerpt
+        ));
+    } 
+
+// GET ROUTE TO: https://hackinwp.com/wp-json/university/v1/search?term=poetry
+// RETURNS:
+{
+    "generalInfo": [],
+    "professors": [],
+    "programs": [],
+    "events": [
+        {
+            "title": "Poetry Day",
+            "permalink": "https://hackinwp.com/events/poetry-day/",
+            "type": "event",
+            "month": "Nov",
+            "day": "24",
+            "excerpt": "Poetry day is going to be amazing."
+        }
+    ],
+    "campuses": []
+}
+
+```
+
+
+
+### Lesson 78: Search Logic That's Aware of Relationships
+### A search for biology should return Professor, Campus & Event Custom Post Types tagged with Biology
+
+Currently a search for biology only retrieves Posts, Pages and Programs CPT. 
+
+[Section 16 Lesson 77 NOTE](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/20613988#overview).
+
+[Section 16 Lesson 78 LESSON](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7956672#overview).
+
