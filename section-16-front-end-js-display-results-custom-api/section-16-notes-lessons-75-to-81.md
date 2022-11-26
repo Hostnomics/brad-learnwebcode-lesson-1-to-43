@@ -237,11 +237,224 @@ So in includes/search-route.php:
 
 
 ### Lesson 78: Search Logic That's Aware of Relationships
-### A search for biology should return Professor, Campus & Event Custom Post Types tagged with Biology
+### PART 1: Related search hard coded for Program Custom Post Type of biology (ID 89)
+
+A search for biology should return Professor, Campus & Event Custom Post Types tagged with Biology
 
 Currently a search for biology only retrieves Posts, Pages and Programs CPT. 
 
 [Section 16 Lesson 77 NOTE](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/20613988#overview).
 
 [Section 16 Lesson 78 LESSON](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7956672#overview).
+
+Currently our search is only looking for the search term in the TITLE or MAIN BODDY field. 
+
+When we created our Professor Custom Post Type with ACF, we set up a field for 'Related Programs'. 
+WP does not store the word 'Biology' in the DB, but instead stores the numerical ID for 'biology'.  (3:11)
+
+'Biology' is a Program Custom Post type. To find the ID, edit the Biology Program and the 'post id' number is displayed in the URL. 
+In this example, it was **/wp-admin/post.php?post=89&action=edit** 89. 
+
+*Biology = 89
+*English = 90
+*Math = 88
+
+
+We want a filter that looks within the related programs custom field (8:25)
+
+So in search-route.php we'll add a second WP_Query 
+
+```
+<?php
+
+// LESSON 78 @  7:10 - Create a 2nd WP Query to get Professors related to the search query
+
+        $programRelationshipQuery = new WP_Query(array(
+            'post_type' => 'professor',         // 1. Identify the post type we are looking for
+            'meta_query' => array(                             // 2. Meta Queries are how we can search based on a custom field.
+                    array(                                              // we use an array nested within an array, b/c WP lets you search multiple filters
+                        'key' => 'related_programs',    // 2a. Name of the ACF that we want to look within.
+                        'compare' => 'LIKE',            // 2b. The comparison type. Here we'll use 'LIKE'
+                        'value' => '"89"'               // 2c. The ID number of the Program we are looking for. Here, 89 = Biology.
+                    ) 
+                )
+        
+        ));
+        
+        while($programRelationshipQuery->have_posts()){
+            $programRelationshipQuery->the_post(); 
+            
+            if(get_post_type() == 'professor'){    
+                array_push($results['professors'], array(         
+                    'title' => get_the_title(),
+                    'permalink' => get_the_permalink(),
+                    'type' => get_post_type(),
+                    'image' => get_the_post_thumbnail_url(0, 'professorLandscape')
+                ));
+            }            
+        }
+
+```
+
+
+A search for 'biology' will return the SAME Professor Barksalot post twice, because it finds 
+Program ID 89 (Biology) as well as the TEXT we added to the body with the word 'biology'.
+
+
+Search for 'biology': https://hackinwp.com/wp-json/university/v1/search?term=biology
+RETURNS the same post for 'barksalot' twice:
+```
+{
+    "generalInfo": [
+        {
+            "title": "Biology is Cool",
+            "permalink": "https://hackinwp.com/2022/11/18/biology-is-cool/",
+            "type": "post",
+            "authorName": "dAppin"
+        }
+    ],
+    "professors": [
+        {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/barksalot-400x260.jpg"
+        },
+        {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/barksalot-400x260.jpg"
+        },
+        {
+            "title": "Dr. Meowsalot",
+            "permalink": "https://hackinwp.com/professor/dr-meowsalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/meowsalot-400x260.jpg"
+        }
+    ],
+    "programs": [
+        {
+            "title": "Biology",
+            "permalink": "https://hackinwp.com/programs/biology/",
+            "type": "program"
+        }
+    ],
+    "events": [],
+    "campuses": []
+}
+
+```
+
+To remove the duplicates we'll add: 
+```
+$results['professors'] = array_unique($results['professors'], SORT_REGULAR); 
+```
+
+This removes the duplicate post, but it adds key numbers to each result. 
+```
+{
+    "generalInfo": [
+        {
+            "title": "Biology is Cool",
+            "permalink": "https://hackinwp.com/2022/11/18/biology-is-cool/",
+            "type": "post",
+            "authorName": "dAppin"
+        }
+    ],
+    "professors": {
+        "0": {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/barksalot-400x260.jpg"
+        },
+        "2": {
+            "title": "Dr. Meowsalot",
+            "permalink": "https://hackinwp.com/professor/dr-meowsalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/meowsalot-400x260.jpg"
+        }
+    },
+    "programs": [
+        {
+            "title": "Biology",
+            "permalink": "https://hackinwp.com/programs/biology/",
+            "type": "program"
+        }
+    ],
+    "events": [],
+    "campuses": []
+}
+
+```
+
+We we can remove the key numbers by wrapping our array_unique with **array_values()**
+
+$results['professors'] = array_values **(array_unique(**$results['professors'], SORT_REGULAR)**)**;
+
+```
+$results['professors'] = array_values(array_unique($results['professors'], SORT_REGULAR));
+```
+
+To give us a final result of: https://hackinwp.com/wp-json/university/v1/search?term=biology
+```
+{
+    "generalInfo": [
+        {
+            "title": "Biology is Cool",
+            "permalink": "https://hackinwp.com/2022/11/18/biology-is-cool/",
+            "type": "post",
+            "authorName": "dAppin"
+        }
+    ],
+    "professors": [
+        {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/barksalot-400x260.jpg"
+        },
+        {
+            "title": "Dr. Meowsalot",
+            "permalink": "https://hackinwp.com/professor/dr-meowsalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/meowsalot-400x260.jpg"
+        }
+    ],
+    "programs": [
+        {
+            "title": "Biology",
+            "permalink": "https://hackinwp.com/programs/biology/",
+            "type": "program"
+        }
+    ],
+    "events": [],
+    "campuses": []
+}
+```
+
+
+
+### Lesson 79: Search Logic That's Aware of Relationships PART 2
+### PART 2: Related search of custom post types that is NOT hard coded to biology (ID 89)
+
+Modify the WP_Query for related custom post types that is not hard coded:
+```
+        $programRelationshipQuery = new WP_Query(array(
+            'post_type' => 'professor',         // 1. Identify the post type we are looking for
+            'meta_query' => array(                             // 2. Meta Queries are how we can search based on a custom field.
+                    array(                                              // we use an array nested within an array, b/c WP lets you search multiple filters
+                        'key' => 'related_programs',    // 2a. Name of the ACF that we want to look within.
+                        'compare' => 'LIKE',            // 2b. The comparison type. Here we'll use 'LIKE'
+                        'value' => '"89"'               // 2c. The ID number of the Program we are looking for. Here, 89 = Biology.
+                    ) 
+                )
+        
+        ));
+
+```
+
+[Section 16 Lesson 79](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007366#overview).
+
 
