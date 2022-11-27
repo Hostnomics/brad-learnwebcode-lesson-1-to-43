@@ -648,7 +648,11 @@ Next, we'll build a similar relationship between **Campuses & Events** and **Pro
 Lesson 80: Completing our Search Overlay
 
 
+**RECAP**
+the_content() - retrieves the default wysiwyg editor content.
 
+To get any Custom Post Type field, use **the_field()** and pass the name of the CPT field as the parameter
+the_field('main_body_content');
 
 
 ### Lesson 80: Build Relationships b/t Programs and Campuses & Events
@@ -657,4 +661,186 @@ Lesson 80: Completing our Search Overlay
 [Lesson 80 - Section 16](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007368#overview).
 
 
+In includes/search-route.php update the **$programRelationshipQuery** WP Query to identify CPTs Professor AND Events by setting it to an array (1:43)
+```
+    $programRelationshipQuery = new WP_Query(array(
+       // 'post_type' => array('professor','events'), // Didn't work b/c must use singular 'event' NOT 'events'
+        'post_type' => array('professor','event'),
+        'meta_query' => $programsMetaQuery
+    ));
+```
 
+In the $programRelationshipQuery check for 'events'
+```
+                    while($programRelationshipQuery->have_posts()){
+                        $programRelationshipQuery->the_post(); 
+                        
+                        if(get_post_type() == 'professor'){    
+                            array_push($results['professors'], array(         
+                                'title' => get_the_title(),
+                                'permalink' => get_the_permalink(),
+                                'type' => get_post_type(),
+                                'image' => get_the_post_thumbnail_url(0, 'professorLandscape')
+                            ));
+                        }
+
+//*******************************************************************************************************************                        
+                        if(get_post_type() == 'event'){                                 // L80 @ 2nd minute added check for event
+                                $eventDate = new DateTime(get_field('event_date')); 
+                                $formatted_month = $eventDate->format('M'); 
+                                $formatted_day = $eventDate->format('d');
+                                
+                                $display_excerpt = null; //L76 @ 7:45 - set excerpt to null in case event has no excerpt OR content and it throws an error
+                                if(has_excerpt()){
+                                   $display_excerpt = get_the_excerpt();  
+                                }else{
+                                    $display_excerpt = wp_trim_words(get_the_content(), 18);
+                                }
+                                
+                                array_push($results['events'], array(         
+                                    'title' => get_the_title(),
+                                    'permalink' => get_the_permalink(),
+                                    'type' => get_post_type(),
+                                    'month' => $formatted_month,
+                                    'day' => $formatted_day,
+                                    'excerpt' => $display_excerpt
+                                ));
+                        }
+//*********************************************************************************************************                        
+            }
+```
+
+Remove Duplicate 'event' posts:
+
+```
+$results['events'] = array_values(array_unique($results['events'], SORT_REGULAR));
+
+```
+
+Previously a search for 'biology' would return an empty events array 'events[]'
+POSTMAN GET: https://hackinwp.com/wp-json/university/v1/search?term=biology
+```
+{
+    "generalInfo": [
+        {
+            "title": "Biology is Cool",
+            "permalink": "https://hackinwp.com/2022/11/18/biology-is-cool/",
+            "type": "post",
+            "authorName": "dAppin"
+        }
+    ],
+    "professors": [
+        {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/barksalot-400x260.jpg"
+        },
+        {
+            "title": "Dr. Meowsalot",
+            "permalink": "https://hackinwp.com/professor/dr-meowsalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/meowsalot-400x260.jpg"
+        }
+    ],
+    "programs": [
+        {
+            "title": "Biology",
+            "permalink": "https://hackinwp.com/programs/biology/",
+            "type": "program",
+            "id": 89
+        }
+    ],
+    "events": [],
+    "campuses": []
+}
+```
+
+Now we are getting the Events CPT which are tagged as 'biology' in their related programs field.
+
+
+...
+    "events": [
+        {
+            "title": "Winter Study Night",
+            "permalink": "https://hackinwp.com/events/winter-study-night/",
+            "type": "event",
+            "month": "Dec",
+            "day": "10",
+            "excerpt": "Join us in Austin when we move back and start engine wp ipsum dolor sit amet, consectetur adipiscing&hellip;"
+        },
+        {
+            "title": "The Science of Cats",
+            "permalink": "https://hackinwp.com/events/the-science-of-cats/",
+            "type": "event",
+            "month": "Nov",
+            "day": "08",
+            "excerpt": "Curabitur gravida arcu ac tortor dignissim convallis aenean et. Amet facilisis magna etiam tempor orci eu lobortis. Vestibulum&hellip;"
+        }
+    ],
+    "campuses": []
+}
+
+```
+```
+
+**Going Back To Lesson 54: Campus Continued** (9:05): https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7639710#overview
+Create Custom Field "Related Campuses" **related_campus**
+
+1. Field Type = 'Relationship'
+2. Filter by Post Type = 'Campus' (what we will be selecting from, belongs to)
+3. Filters: Uncheck 'Taxonomy' and 'Post Type'. Leave 'Search' Checked
+4. Location Rule: Show if _Post Type_ is equal to **Program**
+
+
+Then when we edit Program, we can select the Campus location where that Program is taught: 
+
+![Related Campus Selection on Programs](https://i.imgur.com/Uczmjg9.png)
+
+Lesson 54: Show programs available at Campus with WP Query
+https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/7639710#overview
+
+
+
+**Returning back to Lesson 80 @ 9:21**
+We will set up the relationship b/t Campus and Related Programs (taught @ Campus)
+
+In the $mainQuery as we are using if statements to check for each post type, add this to Program CPT
+```
+<?php
+
+    if(get_post_type() == 'program'){  
+                                                            // Set up related Campuses in Lesson 54 (9:05)
+        $relatedCampuses = get_field('related_campus');     // L80 @ 9:21 : https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007368#overview
+        
+            if($relatedCampuses){       //As long as variable not empty, this evaluates to true.
+                foreach($relatedCampuses as $campus) {
+                    array_push($results['campuses'], array(
+
+                   //     'title' => get_the_title(),             // L80 (12:54) - **SCOPE ISSUE** GETTING TITLE OF ie 'MATH' PROGRAM, and NOT the CAMPUS CPT Title. 
+                   //     'permalink' => get_the_permalink()
+
+                        'title' => get_the_title($campus),             // L80 (13:26) - **SCOPE ISSUE** specify titel and permalink of the CAMPUS CPT by passing it as parameter
+                        'permalink' => get_the_permalink($campus)
+
+                    ));
+                }
+            }
+        
+        
+        array_push($results['programs'], array(         
+            'title' => get_the_title(),
+            'permalink' => get_the_permalink(),
+            'type' => get_post_type(),
+            'id' => get_the_id()            // L79 @ 2:38 added dynamic ID for Programs: https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007366#overview
+        ));
+    } 
+
+
+```
+
+
+### Lesson 81: jQuery Free Live Search
+Updated june 20
+
+[Lesson 81 - Section 16](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/20613720#overview).
