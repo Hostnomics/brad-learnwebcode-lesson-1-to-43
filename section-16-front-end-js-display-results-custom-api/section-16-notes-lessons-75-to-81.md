@@ -439,6 +439,8 @@ To give us a final result of: https://hackinwp.com/wp-json/university/v1/search?
 ### Lesson 79: Search Logic That's Aware of Relationships PART 2
 ### PART 2: Related search of custom post types that is NOT hard coded to biology (ID 89)
 
+[Section 16 Lesson 79](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007366#overview).
+
 Modify the WP_Query for related custom post types that is not hard coded:
 ```
         $programRelationshipQuery = new WP_Query(array(
@@ -455,6 +457,204 @@ Modify the WP_Query for related custom post types that is not hard coded:
 
 ```
 
-[Section 16 Lesson 79](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007366#overview).
+
+
+In the while loop for the $mainQuery WP_Query, we'll add a field to our custom API route for the 'programs' array. 
+
+We'll use the WP built-in function **get_the_id()** to dynamically retrieve the ID of the Program Custom Post Type
+
+In includes/search-route.php:
+```
+<?php
+
+    if(get_post_type() == 'program'){    
+        array_push($results['programs'], array(         
+            'title' => get_the_title(),
+            'permalink' => get_the_permalink(),
+            'type' => get_post_type(),
+            'id' => get_the_id()            // L79 @ 2:38 added dynamic ID for Programs: https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007366#overview
+        ));
+    } 
+
+```
+
+This returns: https://hackinwp.com/wp-json/university/v1/search?term=biology
+```
+    "programs": [
+        {
+            "title": "Biology",
+            "permalink": "https://hackinwp.com/programs/biology/",
+            "type": "program",
+            "id": 89
+        }
+    ],
+```
+
+
+Then down in our second WP_Query (_$programRelationshipQuery_), we can set the value of the **meta_query** array for Professor to use
+**$results['programs'][0]['id']**
+The _[0]_ to get the first item in the JSON array
+
+```
+        $programRelationshipQuery = new WP_Query(array(
+            'post_type' => 'professor',         // 1. Identify the post type we are looking for
+            'meta_query' => array(                             // 2. Meta Queries are how we can search based on a custom field.
+                    array(                                              // we use an array nested within an array, b/c WP lets you search multiple filters
+                        'key' => 'related_programs',    // 2a. Name of the ACF that we want to look within.
+                        'compare' => 'LIKE',            // 2b. The comparison type. Here we'll use 'LIKE'
+                        // 'value' => '"89"'               // 2c. The ID number of the Program we are looking for. Here, 89 = Biology.
+                        'value' => '"' . $results['programs'][0]['id'] . '"'   // L79 @ (3:14) - Dynamically get the ID of the matching program
+                    ) 
+                )
+        ));
+```
+
+Lesson 79 @ (4:27) - Currently we are ALWAYS returning the first PROGRAM match at position [0].
+
+That's the limitation of our current Professior meta_query: 
+```
+        $programRelationshipQuery = new WP_Query(array(
+            'post_type' => 'professor',         
+            'meta_query' => array(                            
+                    array(                                              
+                        'key' => 'related_programs',    
+                        'compare' => 'LIKE',            
+                        'value' => '"' . $results['programs'][0]['id'] . '"'   // L79 @ (4:27) - Works until more than 1 program match.
+                    ) 
+                )
+        ));
+
+```
+
+
+**Lesson 79 @ (11:30)** - This section of our code dynamically each Program match (the [0], [1], [2] issue)
+
+
+
+```
+        $programsMetaQuery = array('relation' => 'OR');     // L79 @ 11:39 -Solution returns ALL Professors if no match found, empty professors[], ex jibberish search.
+        
+        foreach($results['programs'] as $item){
+            array_push($programsMetaQuery, array( 
+                        'key' => 'related_programs',    
+                        'compare' => 'LIKE',            
+                        // 'value' => '"' . $results['programs'][$counter]['id'] . '"'      // 
+                        
+                        'value' => '"' . $item['id'] . '"'  // Lesson 79 @ 10:30
+                    )
+            ); 
+        }
+
+
+
+        $programRelationshipQuery = new WP_Query(array(
+            'post_type' => 'professor',  
+            'meta_query' => $programsMetaQuery
+        ));
+
+```
+
+So a return for jibberish 'asdfaswefsd' will return ALL 3 of our Professor CPT:
+```
+{
+    "professors": [
+        {
+            "title": "Dr. Froggerson",
+            "permalink": "https://hackinwp.com/professor/dr-froggerson/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/frog-bio-400x260.jpg"
+        },
+        {
+            "title": "Dr. Barksalot",
+            "permalink": "https://hackinwp.com/professor/dr-barksalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/barksalot-400x260.jpg"
+        },
+        {
+            "title": "Dr. Meowsalot",
+            "permalink": "https://hackinwp.com/professor/dr-meowsalot/",
+            "type": "professor",
+            "image": "https://hackinwp.com/wp-content/uploads/2022/11/meowsalot-400x260.jpg"
+        }
+    ],
+    "programs": [],
+    "events": [],
+    "campuses": []
+}
+```
+
+**Lesson 79 @ (12:31)** - fix the ALL Program CPT results for jibberish by wrapping it with if statement.
+The IF statement checks IF ANY Program CPT matches a search term, prevents, 
+so we don't return ALL Professor CPTs when no match is found.
+
+```
+if($results['programs']){ 
+
+}
+```
+
+Now a search with no Program matches will return 
+```
+{
+    "generalInfo": [],
+    "professors": [],
+    "programs": [],
+    "events": [],
+    "campuses": []
+}
+```
+
+
+Lesson 79 @ (15:26) - The problem where 'math' search matches BIOLOGY post with the word 'math' in the TEXT BODY. 
+
+**Solution**
+So we’ll create a new ACF field only for Programs (called main_body_content) which will store the “Text Body” content, so it will be outside the scope of our custom includes/search-route.php. 
+
+
+See Doc Notes. 
+
+Final part of Lesson 79 (18:44) we will fix the user experience to remove the default text editor for PROGRAM Custom Post Type ONLY, and instead leave only the ACF (wysiwyg editor, main_body_content) area for the user to use, without realizing what they type in the main_body_content text is excluded from our search. 
+
+Finally, in mu-plugins/university-post-types.php, we just remove supports editor to remove the default editor 
+for solemente Program Custom Post Type: 
+
+```
+    register_post_type('program', array(
+        //    'supports' => array('title', 'editor'),       //L79 @ 
+            'supports' => array('title'),
+            
+            'rewrite' => array('slug' => 'programs'),
+            'has_archive' => true,
+            'public' => true,
+            'show_in_rest' => true,
+            'labels' => array(
+                'name' => 'Programs',
+                'add_new_item' => 'Add New Program',
+                'edit_item' => 'Edit Program',
+                'all_items' => 'All Programs', 
+                'singular_name' => 'Program'
+                ),
+            'menu_icon' => 'dashicons-awards'
+    ));      
+
+```
+
+This completes the relationship between Programs and Professors. 
+
+Our search now returns Professors based on their relationship to Programs. (ie 'biology').
+
+Next, we'll build a similar relationship between **Campuses & Events** and **Programs.**
+
+Lesson 80: Completing our Search Overlay
+
+
+
+
+
+### Lesson 80: Build Relationships b/t Programs and Campuses & Events
+### Duplicate the relationship we built b/t Programs and Professors in Lesson 80
+
+[Lesson 80 - Section 16](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/8007368#overview).
+
 
 
