@@ -844,3 +844,16 @@ In the $mainQuery as we are using if statements to check for each post type, add
 Updated june 20
 
 [Lesson 81 - Section 16](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/20613720#overview).
+
+
+single-program.php
+ <div class="generic-content"><?php the_field('main_body_content'); ?></div>
+
+## WP Functions
+
+the_content() - retrieves the default wysiwyg editor content.
+
+To get any Custom Post Type field, use **the_field()** and pass the name of the CPT field as the parameter
+the_field('main_body_content');
+
+**get_post_type()** from https://developer.wordpress.org/reference/functions/get_post_type/
