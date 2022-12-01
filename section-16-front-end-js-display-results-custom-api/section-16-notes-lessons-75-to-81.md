@@ -845,6 +845,12 @@ Updated june 20
 
 [Lesson 81 - Section 16](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/20613720#overview).
 
+In this section, the jQuery used to power our search is rewritten in plain Javascript **using axios** instead of **jQuery's $.getJSON()**
+
+
+See the JavaScript version of our jQuery footer search [See Search.js](#).
+
+
 
 single-program.php
  <div class="generic-content"><?php the_field('main_body_content'); ?></div>
