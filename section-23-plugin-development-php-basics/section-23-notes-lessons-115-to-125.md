@@ -215,3 +215,36 @@ Save the settings from user submitted form data (drop down, text field and check
 [Lesson 118 in Section 23](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/26880730#overview).
 
 
+L118 @ (1:24) we looked at the wp_options table for our WP DB. 
+
+(3rd min) - We cover how to run a DB Migration to add fields in the **wp_options** table for our plugin
+
+
+To be efficient, we'll say that a value of 0 is display at top of post, value of 1 displays at end. 
+
+To run a migration and add the fields our plugin needs to the wp_options table, use an 
+**add_action hook** with value of **admin_init** and in the corresponding function use 
+**register_setting** with the options shown below to set up the field information: 
+
+```
+class WordCountAndTimePlugin {      //L 117 @ 8:30 create class
+    function __construct() {
+        // INCLUDE TOP LEVEL ACTIONS OR FILTERS WE'RE GOING TO USE IN THIS CONSTRUCTOR L117 @ (10:30)
+            // add_action('admin_menu', 'ourPluginSettingsLink');  //LESSON 17 - Now we'll use an ACTION HOOK to add a link to the SETTINGS tab in WP ADMIN
+        add_action('admin_menu', array($this, 'adminPage'));  //LESSON 17 - 11:40 - We have to reference new adminPage function with an array
+        add_action('admin_init', array($this, 'settings'));   //L118 @ 3:26 
+    }
+    
+    function settings(){
+        register_settings('wordcountplugin', 'wcp_location', array('sanitize_callback' => 'sanitize_text_field', 'default' => '0')); 
+            // register_settings(1, 2, 3);  (group nam, field name, )
+            // 1 - GROUP NAME -name of group this setting belongs to. (5:15)
+            // 2 - Field Name
+            // 3 - Array 
+                // (3a) sanitize callback, how we want to sanitize the value, 
+                // (3b) default value if none given
+    }
+
+}
+```
+
