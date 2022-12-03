@@ -248,3 +248,116 @@ class WordCountAndTimePlugin {      //L 117 @ 8:30 create class
 }
 ```
 
+
+Updated solution after [Lesson 118](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/26880730#overview).
+
+```
+class WordCountAndTimePlugin {
+  function __construct() {
+    add_action('admin_menu', array($this, 'adminPage'));
+    add_action('admin_init', array($this, 'settings'));
+  }
+
+  function settings() {
+    add_settings_section('wcp_first_section', null, null, 'word-count-settings-page');
+    add_settings_field('wcp_location', 'Display Location', array($this, 'locationHTML'), 'word-count-settings-page', 'wcp_first_section');
+    register_setting('wordcountplugin', 'wcp_location', array('sanitize_callback' => 'sanitize_text_field', 'default' => '0'));
+  }
+
+  function locationHTML() { ?>
+    <select name="wcp_location">                                <!-- L118 @ (16:32) Field Name Created in register_settings -->
+      <option value="0">Beginning of post</option>
+      <option value="1">End of post</option>
+    </select>
+  <?php }
+
+  function adminPage() {
+    add_options_page('Word Count Settings', 'Word Count', 'manage_options', 'word-count-settings-page', array($this, 'ourHTML'));
+  }
+
+  function ourHTML() { ?>
+    <div class="wrap">
+      <h1>Word Count Settings</h1>
+      <form action="options.php" method="POST">
+      <?php
+                    //paramter takes name of the field group we set in register_settings() above in our settings() function.
+        settings_fields('wordcountplugin');                     //L118 @ (17:40) - THIS allows you to submit & save the input via our POST route         
+        do_settings_sections('word-count-settings-page');       //L118 @ (14:45) 
+        submit_button();                                        //L118 @ (15:37)
+      ?>
+      </form>
+    </div>
+  <?php }
+}
+
+$wordCountAndTimePlugin = new WordCountAndTimePlugin();
+```
+
+
+## Lesson 119: Finishing Our Settings Form
+
+
+[Lesson 119 in Section 23](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/26880730#overview).
+
+We'll show the user the currently selected value from the drop down menu (0:52) in the locationHTML() function. 
+
+
+We'll compare the value in the database for the field named **wcp_location** to the value assigned to each drop down menu option. 
+If it matches, then we will use the built in **selected()** WP function 
+
+**selected() Format**
+selected('what you want to compare', 'what to compare it to');
+
+For the first paramater we'll use WP built in function **get_option('field_name_here')** 
+
+So the solution we'll use in our drop down menu is: 
+
+**selected(get_option('wcp_location'), "0")** 
+
+```
+  function locationHTML() { ?>
+    <select name="wcp_location">                                
+      <option value="0" <?php selected(get_option(), "0"); ?>>Beginning of post</option>
+      <option value="1" <?php selected(get_option(), "1"); ?>>End of post</option>
+    </select>
+  <?php }
+
+```
+
+
+
+Add text input field
+```
+  function settings() {
+    add_settings_section('wcp_first_section', null, null, 'word-count-settings-page');
+
+//Drop Down    
+    add_settings_field('wcp_location', 'Display Location', array($this, 'locationHTML'), 'word-count-settings-page', 'wcp_first_section');
+    register_setting('wordcountplugin', 'wcp_location', array('sanitize_callback' => 'sanitize_text_field', 'default' => '0'));
+
+//Text Field L119 @ (4:38)
+    add_settings_field('wcp_headline', 'Headline Text', array($this, 'headlineHTML'), 'word-count-settings-page', 'wcp_first_section');
+    register_setting('wordcountplugin', 'wcp_headline', array('sanitize_callback' => 'sanitize_text_field', 'default' => 'Post Statistics'));   
+    
+  }
+ 
+```
+
+Then create the HTML for the text input with name 'wcp_headline'. 
+We can load the value from the DB with **get_option('field_name')**
+
+```
+  function headlineHTML() { ?>
+     
+      <input type="text" name="wcp_headline" value="<?php echo get_option("wcp_headline") ?>">
+  
+ <?php }
+```
+
+Any time we load information from DB to an input field(?), wrap in esc_attr() which is similar to esc_URL() for 
+loading URLs from database. 
+
+```
+<input type="text" name="wcp_headline" value="<?php echo esc_attr(get_option("wcp_headline")) ?>">
+
+```
