@@ -361,3 +361,77 @@ loading URLs from database.
 <input type="text" name="wcp_headline" value="<?php echo esc_attr(get_option("wcp_headline")) ?>">
 
 ```
+
+
+We added a 5th parameter option for our three Check boxes and then used one checkboxHTML() function since all three used
+the same logic. (12th - 14th minute) 
+
+```
+
+add_settings_field('wcp_wordcount', 'Word count', array($this, 'checkboxHTML'), 'word-count-settings-page', 'wcp_first_section', array('theName' => 'wcp_wordcount')); //L119 (13:17)
+register_setting('wordcountplugin', 'wcp_wordcount', array('sanitize_callback' => 'sanitize_text_field', 'default' => '1'));   
+
+add_settings_field('wcp_charactercount', 'Character count', array($this, 'checkboxHTML'), 'word-count-settings-page', 'wcp_first_section', array('theName' => 'wcp_charactercount')); //L119 (13:17)
+register_setting('wordcountplugin', 'wcp_charactercount', array('sanitize_callback' => 'sanitize_text_field', 'default' => '1')); 
+
+add_settings_field('wcp_readtime', 'Read Time', array($this, 'checkboxHTML'), 'word-count-settings-page', 'wcp_first_section', array('theName' => 'wcp_readtime')); //L119 (13:17) - add 5th argument set 'theName' as field name
+register_setting('wordcountplugin', 'wcp_readtime', array('sanitize_callback' => 'sanitize_text_field', 'default' => '1')); 
+
+
+//Same checkboxHTML function for all three checkboxes created above:
+function checkboxHTML($args){    ?>    
+        <input type="checkbox" name="<?php echo $args['theName'] ?>" value="1" <?php checked(get_option($args['theName']), '1') ?>>    
+<?php }
+
+```
+
+
+**Final part of lesson 119, we focused on Custom Validation Logic**
+(14:00 - 19:58)
+
+In our class' Settings function, we'll improve our santize_callback
+```
+  function settings() {
+    add_settings_section('wcp_first_section', null, null, 'word-count-settings-page');
+    
+//Drop Down    
+    add_settings_field('wcp_location', 'Display Location', array($this, 'locationHTML'), 'word-count-settings-page', 'wcp_first_section');
+    register_setting('wordcountplugin', 'wcp_location', array('sanitize_callback' => 'sanitize_text_field', 'default' => '0'));
+
+//REWRITE TO
+  register_setting('wordcountplugin', 'wcp_location', array('sanitize_callback' => array($this, 'sanitizeLocation'), 'default' => '0'));
+
+```
+
+**array('sanitize_callback' => array($this, 'sanitizeLocation')** 
+
+
+Our custom sanitize function will check the values of our drop down menu. Only desired inputs are 0 or 1. 
+
+use **add_settings_error(1, 2, 3)** function
+1 - the name of the option (field) that the error is related to. Here (wcp_location)
+2 - A slug or identifier for this particular error. WP adds this as an ID
+3 - The error message to display to user
+
+```
+    function sanitizeLocation($input) { // when sanitizeLocation is called, WP will pull in the value that WP is trying to save
+        if ($input != '0' AND $input != '1'){
+           // add_settings_error(1, 2, 3);
+            add_settings_error('wcp_location', 'wcp_location_error', 'Display location must be either beginning or end');
+          //Get the previously saved value for wcp_location, which may be default '0'
+            return get_option('wcp_location');
+        } 
+        
+        //If input IS either 0 or 1:
+            return $input; 
+    }
+
+```
+
+
+
+## Lesson 120: Actually Counting the Words, Characters and Road Time
+
+[Lesson 120 in Section 23](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/26880762#overview).
+
+Start filtering posts with our plugin.
