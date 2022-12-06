@@ -435,3 +435,158 @@ use **add_settings_error(1, 2, 3)** function
 [Lesson 120 in Section 23](https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/26880762#overview).
 
 Start filtering posts with our plugin.
+
+In wp-content/plugins/our-first-unique-plugin/our-first-unique-plugin.php
+
+We added a filter to our WordCountAndTimePlugin class' __construct()
+**add_filter('the_content', array($this, 'customFunction'));**
+
+```
+class WordCountAndTimePlugin {
+  function __construct() {
+   
+    add_filter('the_content', array($this, 'ifWrap'));  //L120 (2:33)
+  }
+
+  function ifWrap($content) {
+  if ( 
+          is_main_query() AND 
+          is_single()  AND     //L120 (5:15) - BOTH is main query is single post
+          (
+              get_option('wcp_wordcount', '1') OR       // and ONE of our plugin checkboxes is checked.
+              get_option('wcp_charactercount', '1') OR 
+              get_option('wcp_readtime', '1')
+          ) 
+        ) 
+    {
+        return $this->createHTML($content);
+    }
+  
+    return $content; 
+  } //end of ifWrap
+
+
+  function createHTML($content) {      
+      // return $content . ' hello'; //L120 (9:00) - testing: https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/26880762#overview
+  
+  //create var we can add on to as we go L120 (10:20)
+      $html = '<h3>' . get_option('wcp_headline', 'Post Statistics From createHTML') . '</h3><p>';
+      
+  // Set Word Count to variable L120 (13:24) - both wordcount and readtime will need it. 
+      
+      
+      if (get_option('wcp_location', '0') == '0') {
+          return $html . $content;  
+      } 
+      // else { - L120 - 12:28 - did not use else statment
+          return $content . $html;
+      // }
+  }
+
+```
+
+L120 @ (13:57) - To get the word count of the post content, we'll use PHP functions
+
+**str_word_count()**
+
+But we'll wrap the_content with **strip_tags()** to remove any html tags so we end up with: 
+
+```
+$wordCount = str_word_count(strip_tags($content));
+
+```
+
+## get_option() is SINGULAR - NOT PLURAL
+
+NOT get_option**s**() !!!
+
+
+To get the total characters we use **strlen()** on content while also wrapping it in strip_tags()
+
+```
+    if (get_option('wcp_charactercount', '1')){
+        $html .= 'This post has ' . strlen(strip_tags($content)) . ' characters.<br>';
+    } 
+
+```
+
+So the final solution was: 
+
+```
+<?php
+
+class WordCountAndTimePlugin {
+  function __construct() {
+    add_action('admin_menu', array($this, 'adminPage'));
+    add_action('admin_init', array($this, 'settings'));
+    
+    add_filter('the_content', array($this, 'ifWrap'));  //L120 (2:33)
+  }
+  
+  
+    function ifWrap($content) {
+        if ( 
+              is_main_query() AND 
+              is_single()  AND     //L120 (5:15) - BOTH is main query is single post
+              (
+                  get_option('wcp_wordcount', '1') OR       // and ONE of our plugin checkboxes is checked.
+                  get_option('wcp_charactercount', '1') OR 
+                  get_option('wcp_readtime', '1')
+              ) 
+            ) 
+        {
+            return $this->createHTML($content);
+        }
+      
+      return $content; 
+    } //end of ifWrap
+  
+
+ 
+    function createHTML($content) {
+        
+        // return $content . ' hello'; //L120 (9:00) - testing: https://www.udemy.com/course/become-a-wordpress-developer-php-javascript/learn/lecture/26880762#overview
+    
+    //create var we can add on to as we go L120 (10:20)
+        $html = '<h3>' . get_option('wcp_headline', 'Post Statistics From createHTML') . '</h3><p>';
+    
+/* GET_OPTION IS SINGULAR - NOT FING PLURAL!!!
+    if (get_options('wcp_wordcount', '1') OR get_options('wcp_readtime', '1')) {         //L120 (14:50) - We only want to count the number of words if Word Count or Read Time boxes are checked      
+                                                                                        // Set Word Count to variable L120 (13:24) - both wordcount and readtime will need it.
+        $wordCount = str_word_count(strip_tags($content));                              //L120 - 13:57 - passing just $content may include html tags, so use strip_tags($content) to remove them
+    }    
+*/   
+
+    if (get_option('wcp_wordcount', '1') OR get_option('wcp_readtime', '1')) {
+        $wordCount = str_word_count(strip_tags($content));
+    }
+    
+    if (get_option('wcp_wordcount', '1')){
+        $html .= 'This post has ' . $wordCount . ' words.<br>';
+    }   
+    
+    
+    if (get_option('wcp_charactercount', '1')){
+        $html .= 'This post has ' . strlen(strip_tags($content)) . ' characters.<br>';
+    } 
+
+        
+        if (get_option('wcp_location', '0') == '0') {
+            return $html . $content;  
+        } 
+        // else { - L120 - 12:28 - did not use else statment
+            return $content . $html;
+        // }
+        
+    }
+
+```
+
+
+**Final Pro Tip** when displaying text from our database, always wrap it in **esc_html()**
+
+So in this line here: 
+```
+$html = '<h3>' . esc_html(get_option('wcp_headline', 'Post Statistics From createHTML')) . '</h3><p>';
+```
+
